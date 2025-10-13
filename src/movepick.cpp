@@ -160,11 +160,13 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
             // histories
             m.value = 2 * (*mainHistory)[us][m.from_to()];
             m.value += 2 * (*pawnHistory)[pawn_history_index(pos)][pc][to];
-            m.value += (*continuationHistory[0])[pc][to];
-            m.value += (*continuationHistory[1])[pc][to];
-            m.value += (*continuationHistory[2])[pc][to];
-            m.value += (*continuationHistory[3])[pc][to];
-            m.value += (*continuationHistory[5])[pc][to];
+            // Apply differential weights matching search.cpp update pattern
+            m.value += 2 * (*continuationHistory[0])[pc][to];
+            m.value += 2 * 648 * (*continuationHistory[1])[pc][to] / 1157;
+            m.value += 2 * 288 * (*continuationHistory[2])[pc][to] / 1157;
+            m.value += 2 * 576 * (*continuationHistory[3])[pc][to] / 1157;
+            m.value += 2 * 140 * (*continuationHistory[4])[pc][to] / 1157;
+            m.value += 2 * 441 * (*continuationHistory[5])[pc][to] / 1157;
 
             // bonus for checks
             m.value += (bool(pos.check_squares(pt) & to) && pos.see_ge(m, -75)) * 16384;
