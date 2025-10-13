@@ -1122,7 +1122,7 @@ moves_loop:  // When in check, search starts here
             if (value < singularBeta)
             {
                 int corrValAdj   = std::abs(correctionValue) / 229958;
-                // Query TTMoveHistory with 2-ply and 4-ply lookback
+                // Query TTMoveHistory with 2-ply, 4-ply, and 6-ply lookback
                 int ttmh = 0;
                 if ((ss-1)->currentMove.is_ok())
                 {
@@ -1135,6 +1135,12 @@ moves_loop:  // When in check, search starts here
                     Square prevTo = (ss-2)->currentMove.to_sq();
                     Piece prevPc = pos.piece_on(prevTo);
                     ttmh += 64 * ttMoveHistory[prevPc][prevTo][pos.moved_piece(move)][move.to_sq()] / 128;
+                }
+                if ((ss-4)->currentMove.is_ok())
+                {
+                    Square prevTo = (ss-4)->currentMove.to_sq();
+                    Piece prevPc = pos.piece_on(prevTo);
+                    ttmh += 32 * ttMoveHistory[prevPc][prevTo][pos.moved_piece(move)][move.to_sq()] / 128;
                 }
                 int doubleMargin = -4 + 198 * PvNode - 212 * !ttCapture - corrValAdj
                                  - 921 * ttmh / 127649 - (ss->ply > rootDepth) * 45;
@@ -1155,7 +1161,7 @@ moves_loop:  // When in check, search starts here
             // subtree by returning a softbound.
             else if (value >= beta && !is_decisive(value))
             {
-                // Update TTMoveHistory with 2-ply and 4-ply context
+                // Update TTMoveHistory with 2-ply, 4-ply, and 6-ply context
                 int penalty = std::max(-400 - 100 * depth, -4000);
                 if ((ss-1)->currentMove.is_ok())
                 {
@@ -1168,6 +1174,12 @@ moves_loop:  // When in check, search starts here
                     Square prevTo = (ss-2)->currentMove.to_sq();
                     Piece prevPc = pos.piece_on(prevTo);
                     ttMoveHistory[prevPc][prevTo][pos.moved_piece(move)][move.to_sq()] << (penalty * 64 / 137);
+                }
+                if ((ss-4)->currentMove.is_ok())
+                {
+                    Square prevTo = (ss-4)->currentMove.to_sq();
+                    Piece prevPc = pos.piece_on(prevTo);
+                    ttMoveHistory[prevPc][prevTo][pos.moved_piece(move)][move.to_sq()] << (penalty * 32 / 137);
                 }
                 return value;
             }
@@ -1435,6 +1447,12 @@ moves_loop:  // When in check, search starts here
                 Square prevTo = (ss-2)->currentMove.to_sq();
                 Piece prevPc = pos.piece_on(prevTo);
                 ttMoveHistory[prevPc][prevTo][pos.moved_piece(ttData.move)][ttData.move.to_sq()] << (bonus * 64 / 137);
+            }
+            if ((ss-4)->currentMove.is_ok())
+            {
+                Square prevTo = (ss-4)->currentMove.to_sq();
+                Piece prevPc = pos.piece_on(prevTo);
+                ttMoveHistory[prevPc][prevTo][pos.moved_piece(ttData.move)][ttData.move.to_sq()] << (bonus * 32 / 137);
             }
         }
     }
