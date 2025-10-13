@@ -163,8 +163,10 @@ struct CorrHistTypedef<NonPawn> {
 template<CorrHistType T>
 using CorrectionHistory = typename Detail::CorrHistTypedef<T>::type;
 
-// TTMoveHistory tracks TT move quality indexed by [piece][to]
-using TTMoveHistory = Stats<std::int16_t, 8192, PIECE_NB, SQUARE_NB>;
+// TTMoveHistory tracks TT move quality with continuation pattern
+// Indexed by [prevPiece][prevTo][piece][to] for multi-ply lookback
+using TTMoveHistoryBase = Stats<std::int16_t, 8192, PIECE_NB, SQUARE_NB>;
+using TTMoveHistory = MultiArray<TTMoveHistoryBase, PIECE_NB, SQUARE_NB>;
 
 }  // namespace Stockfish
 
