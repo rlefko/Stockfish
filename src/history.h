@@ -163,7 +163,9 @@ struct CorrHistTypedef<NonPawn> {
 template<CorrHistType T>
 using CorrectionHistory = typename Detail::CorrHistTypedef<T>::type;
 
-using TTMoveHistory = StatsEntry<std::int16_t, 8192>;
+// TTMoveHistory tracks TT move quality per piece/square with depth-based bonuses
+// Uses simple 2D indexing with multiplicative depth weighting
+using TTMoveHistory = Stats<std::int16_t, 8192, PIECE_NB, SQUARE_NB>;
 
 }  // namespace Stockfish
 
