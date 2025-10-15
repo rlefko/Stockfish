@@ -30,6 +30,10 @@ namespace Stockfish {
 
 namespace {
 
+// Pre-computed ply-dependent weights for LowPlyHistory to avoid expensive division
+// Corresponds to formula: 10 / (1 + ply) for ply 0-9
+constexpr int LOW_PLY_WEIGHTS[10] = {10, 5, 3, 2, 2, 1, 1, 1, 1, 1};
+
 enum Stages {
     // generate main search moves
     MAIN_TT,
@@ -177,7 +181,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
 
             if (ply < LOW_PLY_HISTORY_SIZE)
-                m.value += 10 * (*lowPlyHistory)[ply][m.from_to()] / (1 + ply);
+                m.value += LOW_PLY_WEIGHTS[ply] * (*lowPlyHistory)[ply][m.from_to()];
         }
 
         else  // Type == EVASIONS
@@ -188,7 +192,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
             {
                 m.value = (*mainHistory)[us][m.from_to()] + (*continuationHistory[0])[pc][to];
                 if (ply < LOW_PLY_HISTORY_SIZE)
-                    m.value += 10 * (*lowPlyHistory)[ply][m.from_to()] / (1 + ply);
+                    m.value += LOW_PLY_WEIGHTS[ply] * (*lowPlyHistory)[ply][m.from_to()];
             }
         }
     }
