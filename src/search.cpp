@@ -92,6 +92,25 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
     return 9536 * pcv + 8494 * micv + 10132 * (wnpcv + bnpcv) + 7156 * cntcv;
 }
 
+// Calculate continuation-specific corrplexity for LMR adjustments.
+// Returns weighted magnitude of continuation corrections across 2/4/6/8 plies.
+int continuation_corrplexity(const Stack* const ss, const Position& pos) {
+    const Move m = (ss - 1)->currentMove;
+    if (!m.is_ok())
+        return 0;
+
+    const Piece pc = pos.piece_on(m.to_sq());
+    const Square to = m.to_sq();
+
+    const auto ss2 = (*(ss - 2)->continuationCorrectionHistory)[pc][to];
+    const auto ss4 = (*(ss - 4)->continuationCorrectionHistory)[pc][to];
+    const auto ss6 = (*(ss - 6)->continuationCorrectionHistory)[pc][to];
+    const auto ss8 = (*(ss - 8)->continuationCorrectionHistory)[pc][to];
+
+    // Weight magnitudes matching the correction weights (137, 64, 32, 16)
+    return (std::abs(ss2) * 137 + std::abs(ss4) * 64 + std::abs(ss6) * 32 + std::abs(ss8) * 16) / 128;
+}
+
 // Add correctionHistory value to raw staticEval and guarantee evaluation
 // does not hit the tablebase range.
 Value to_corrected_static_eval(const Value v, const int cv) {
@@ -1181,6 +1200,7 @@ moves_loop:  // When in check, search starts here
         r += 843;  // Base reduction offset to compensate for other tweaks
         r -= moveCount * 66;
         r -= std::abs(correctionValue) / 30450;
+        r -= continuation_corrplexity(ss, pos) / 15000;  // Continuation-specific complexity signal
 
         // Increase reduction for cut nodes
         if (cutNode)
