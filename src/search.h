@@ -36,6 +36,7 @@
 #include "nnue/network.h"
 #include "nnue/nnue_accumulator.h"
 #include "numa.h"
+#include "patricia_eval.h"
 #include "position.h"
 #include "score.h"
 #include "syzygy/tbprobe.h"
@@ -322,7 +323,7 @@ class Worker {
     TimePoint elapsed() const;
     TimePoint elapsed_time() const;
 
-    Value evaluate(const Position&);
+    Value evaluate(const Position&, int ply = 0, Depth depth = 0);
 
     LimitsType limits;
 
@@ -357,6 +358,9 @@ class Worker {
     // Used by NNUE
     Eval::NNUE::AccumulatorStack  accumulatorStack;
     Eval::NNUE::AccumulatorCaches refreshTable;
+
+    // Used by Patricia aggressive evaluation
+    Patricia::PatriciaState patriciaState;
 
     friend class Stockfish::ThreadPool;
     friend class SearchManager;

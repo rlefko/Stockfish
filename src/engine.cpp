@@ -33,6 +33,7 @@
 #include "misc.h"
 #include "nnue/network.h"
 #include "nnue/nnue_common.h"
+#include "nnue/nnue_patricia.h"
 #include "numa.h"
 #include "perft.h"
 #include "position.h"
@@ -140,7 +141,19 @@ Engine::Engine(std::optional<std::string> path) :
           return std::nullopt;
       }));
 
+    // Patricia aggressive evaluation options
+    options.add("UsePatriciaEval", Option(false, [this](const Option&) {
+                    // Patricia networks will be loaded on first use
+                    return std::nullopt;
+                }));
+
+    options.add("UseXtremeEAS", Option(false));
+
     load_networks();
+
+    // Initialize Patricia's aggressive NNUE networks
+    Eval::NNUE::init_patricia_networks();
+
     resize_threads();
 }
 
