@@ -27,6 +27,10 @@
 #include <cstdint>
 #include <cstring>
 
+namespace Stockfish {
+class Position;  // Forward declaration
+}
+
 namespace Stockfish::Eval::NNUE {
 
 // Patricia network architecture constants
@@ -142,6 +146,16 @@ private:
     PatriciaNetwork rw3;      // Endgame network
     PatriciaNetwork allie;    // Sacrifice network
 };
+
+// Feature indexing for accumulator updates
+// Maps Stockfish Piece and Square to Patricia's 768-dim feature indices
+// Returns pair of (white_perspective_index, black_perspective_index)
+std::pair<size_t, size_t> feature_indices(int stockfish_piece, int square);
+
+// Refresh accumulator from current position (rebuilds from scratch)
+void refresh_accumulator(PatriciaAccumulator& acc,
+                         const Stockfish::Position& pos,
+                         const PatriciaNetwork& network);
 
 // Global Patricia networks accessor
 void init_patricia_networks();
