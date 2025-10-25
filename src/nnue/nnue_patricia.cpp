@@ -69,11 +69,11 @@ int32_t PatriciaNetwork::evaluate(const PatriciaAccumulator& accumulator,
         sum += activated * params.output_weights[PATRICIA_LAYER1_SIZE + i];
     }
 
-    // Add output bias and scale
-    sum += params.output_bias;
-    sum /= PATRICIA_QAB;
-
-    return sum * PATRICIA_SCALE / (PATRICIA_QA * PATRICIA_QA);
+    // Patricia's evaluation formula (from Patricia engine nnue.h:295):
+    // output = sum / QA
+    // result = (output + bias) * SCALE / QAB
+    int32_t output = sum / PATRICIA_QA;
+    return (output + params.output_bias) * PATRICIA_SCALE / PATRICIA_QAB;
 }
 
 void PatriciaNetwork::update_accumulator(PatriciaAccumulator& acc,

@@ -103,8 +103,7 @@ Value evaluate_patricia(const Position& pos,
     auto& networks = Eval::NNUE::get_patricia_networks();
     const auto& current_network = networks.get_network(state.phase);
 
-    // CRITICAL: Refresh accumulator from current position
-    // (We were evaluating with the root position's accumulator, causing random play!)
+    // Refresh accumulator from current position
     Eval::NNUE::refresh_accumulator(state.accumulator, pos, current_network);
 
     // Check if phase needs updating
@@ -127,9 +126,11 @@ Value evaluate_patricia(const Position& pos,
     Value eval = Value(networks.evaluate(state.accumulator, state.phase, pos.side_to_move() == WHITE));
 
     // Apply Patricia's aggressive modifiers
-    eval += Modifiers::better_than_material(eval, pos);
-    eval += Modifiers::sacrifice_bonus(pos, state, eval, search_ply);
-    eval = Modifiers::material_scaling(eval, pos);  // This one multiplies, keep as =
+    Value bonus1 = Modifiers::better_than_material(eval, pos);
+    Value bonus2 = Modifiers::sacrifice_bonus(pos, state, eval, search_ply);
+    eval += bonus1 + bonus2;
+
+    eval = Modifiers::material_scaling(eval, pos);
 
     return eval;
 }

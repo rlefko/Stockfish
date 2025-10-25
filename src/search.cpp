@@ -164,7 +164,6 @@ void Search::Worker::ensure_network_replicated() {
 }
 
 void Search::Worker::start_searching() {
-
     accumulatorStack.reset();
 
     // Initialize Patricia state if using aggressive evaluation
@@ -245,7 +244,6 @@ void Search::Worker::start_searching() {
 // repeatedly with increasing depth until the allocated thinking time has been
 // consumed, the user stops the search, or the maximum search depth is reached.
 void Search::Worker::iterative_deepening() {
-
     SearchManager* mainThread = (is_mainthread() ? main_manager() : nullptr);
 
     Move pv[MAX_PLY + 1];
@@ -302,6 +300,11 @@ void Search::Worker::iterative_deepening() {
     lowPlyHistory.fill(97);
 
     // Iterative deepening loop until requested to stop or the target depth is reached
+    // WORKAROUND: Reset stop flag if it's incorrectly set (bug in thread initialization)
+    if (threads.stop) {
+        threads.stop = false;
+    }
+
     while (++rootDepth < MAX_PLY && !threads.stop
            && !(limits.depth && mainThread && rootDepth > limits.depth))
     {
@@ -1738,7 +1741,6 @@ TimePoint Search::Worker::elapsed_time() const { return main_manager()->tm.elaps
 Value Search::Worker::evaluate(const Position& pos, int ply, Depth depth) {
     // Check if Patricia aggressive evaluation is enabled
     if (options["UsePatriciaEval"]) {
-        // Use Patricia's aggressive NNUE + modifiers
         return Patricia::evaluate_patricia(pos, patriciaState, depth, ply);
     }
 
