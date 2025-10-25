@@ -541,6 +541,11 @@ void Search::Worker::do_move(
     DirtyPiece dp      = pos.do_move(move, st, givesCheck, &tt);
     nodes.fetch_add(1, std::memory_order_relaxed);
     accumulatorStack.push(dp);
+
+    // Update Patricia accumulator incrementally
+    if (options["UsePatriciaEval"]) {
+        Patricia::push_patricia_accumulator(patriciaState, pos, dp);
+    }
     if (ss != nullptr)
     {
         ss->currentMove         = move;
@@ -554,6 +559,11 @@ void Search::Worker::do_null_move(Position& pos, StateInfo& st) { pos.do_null_mo
 void Search::Worker::undo_move(Position& pos, const Move move) {
     pos.undo_move(move);
     accumulatorStack.pop();
+
+    // Pop Patricia accumulator
+    if (options["UsePatriciaEval"]) {
+        Patricia::pop_patricia_accumulator(patriciaState);
+    }
 }
 
 void Search::Worker::undo_null_move(Position& pos) { pos.undo_null_move(); }

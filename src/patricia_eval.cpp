@@ -74,9 +74,66 @@ void init_patricia_state(PatriciaState& state, const Position& pos) {
     state.starting_material = get_material_count(pos);
     state.history_length = 0;
 
-    // Initialize accumulator
+    // Initialize accumulator stack
+    state.current = &state.accumulatorStack[0];
     auto& networks = Eval::NNUE::get_patricia_networks();
-    networks.get_network(state.phase).init_accumulator(state.accumulator);
+    const auto& network = networks.get_network(state.phase);
+
+    // Initialize base accumulator and refresh from position
+    network.init_accumulator(*state.current);
+    Eval::NNUE::refresh_accumulator(*state.current, pos, network);
+}
+
+// Helper to apply a feature update to both perspectives
+static void apply_feature_update(Eval::NNUE::PatriciaAccumulator& acc,
+                                  const Eval::NNUE::PatriciaNetwork& network,
+                                  Piece piece,
+                                  Square square,
+                                  bool add) {
+    const auto [white_idx, black_idx] = Eval::NNUE::feature_indices(piece, square);
+
+    // Update white perspective
+    network.update_accumulator(acc, true, white_idx, add);
+
+    // Update black perspective
+    network.update_accumulator(acc, false, black_idx, add);
+}
+
+void push_patricia_accumulator(PatriciaState& state,
+                                const Position& pos,
+                                const DirtyPiece& dp) {
+    auto& networks = Eval::NNUE::get_patricia_networks();
+    const auto& network = networks.get_network(state.phase);
+
+    // Copy parent accumulator to child position
+    state.current[1] = state.current[0];
+    state.current++;
+
+    // Apply incremental updates based on DirtyPiece
+
+    // 1. Remove piece from origin square (if not SQ_NONE)
+    if (dp.from != SQ_NONE) {
+        apply_feature_update(*state.current, network, dp.pc, dp.from, false);
+    }
+
+    // 2. Add piece to destination square (if not SQ_NONE, e.g., not a promotion)
+    if (dp.to != SQ_NONE) {
+        apply_feature_update(*state.current, network, dp.pc, dp.to, true);
+    }
+
+    // 3. Handle captures or castling rook removal
+    if (dp.remove_sq != SQ_NONE) {
+        apply_feature_update(*state.current, network, dp.remove_pc, dp.remove_sq, false);
+    }
+
+    // 4. Handle promotions or castling rook addition
+    if (dp.add_sq != SQ_NONE) {
+        apply_feature_update(*state.current, network, dp.add_pc, dp.add_sq, true);
+    }
+}
+
+void pop_patricia_accumulator(PatriciaState& state) {
+    state.current--;
 }
 
 Eval::NNUE::PatriciaPhase detect_phase(Value eval, int depth) {
@@ -101,29 +158,26 @@ Value evaluate_patricia(const Position& pos,
                         int depth,
                         int search_ply) {
     auto& networks = Eval::NNUE::get_patricia_networks();
-    const auto& current_network = networks.get_network(state.phase);
-
-    // Refresh accumulator from current position
-    Eval::NNUE::refresh_accumulator(state.accumulator, pos, current_network);
 
     // Check if phase needs updating
     if (depth >= 6 && depth != state.last_phase_check_depth) {
         // Get preliminary eval to detect phase
-        Value prelim_eval = Value(networks.evaluate(state.accumulator, state.phase, pos.side_to_move() == WHITE));
+        Value prelim_eval = Value(networks.evaluate(*state.current, state.phase, pos.side_to_move() == WHITE));
 
         Eval::NNUE::PatriciaPhase new_phase = detect_phase(prelim_eval, depth);
 
         if (new_phase != state.phase) {
             state.phase = new_phase;
-            // Refresh accumulator for new network's phase
-            Eval::NNUE::refresh_accumulator(state.accumulator, pos, networks.get_network(state.phase));
+            // Only refresh when switching networks
+            const auto& new_network = networks.get_network(state.phase);
+            Eval::NNUE::refresh_accumulator(*state.current, pos, new_network);
         }
 
         state.last_phase_check_depth = depth;
     }
 
-    // Evaluate with current phase network
-    Value eval = Value(networks.evaluate(state.accumulator, state.phase, pos.side_to_move() == WHITE));
+    // Evaluate with current phase network (accumulator already updated incrementally)
+    Value eval = Value(networks.evaluate(*state.current, state.phase, pos.side_to_move() == WHITE));
 
     // Apply Patricia's aggressive modifiers
     Value bonus1 = Modifiers::better_than_material(eval, pos);

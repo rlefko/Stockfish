@@ -34,7 +34,11 @@ namespace Patricia {
 // Patricia evaluation state
 struct PatriciaState {
     Eval::NNUE::PatriciaPhase phase = Eval::NNUE::PatriciaPhase::Middlegame;
-    Eval::NNUE::PatriciaAccumulator accumulator;
+
+    // Accumulator stack for incremental updates
+    Eval::NNUE::PatriciaAccumulator accumulatorStack[MAX_PLY + 10];
+    Eval::NNUE::PatriciaAccumulator* current = nullptr;
+
     int last_phase_check_depth = 0;
 
     // Material tracking for sacrifice detection
@@ -45,6 +49,12 @@ struct PatriciaState {
 
 // Initialize Patricia state for a position
 void init_patricia_state(PatriciaState& state, const Position& pos);
+
+// Push/pop accumulator for incremental updates
+void push_patricia_accumulator(PatriciaState& state,
+                                const Position& pos,
+                                const DirtyPiece& dp);
+void pop_patricia_accumulator(PatriciaState& state);
 
 // Detect current phase based on evaluation
 Eval::NNUE::PatriciaPhase detect_phase(Value eval, int depth);
