@@ -71,7 +71,7 @@ int get_material_diff(const Position& pos) {
 void init_patricia_state(PatriciaState& state, const Position& pos) {
     state.phase = Eval::NNUE::PatriciaPhase::Middlegame;
     state.last_phase_check_depth = 0;
-    state.starting_material = get_material_count(pos);
+    state.starting_material_diff = get_material_diff(pos);  // Store material advantage, not total
     state.history_length = 0;
 
     // Initialize accumulator stack
@@ -179,12 +179,27 @@ Value evaluate_patricia(const Position& pos,
     // Evaluate with current phase network (accumulator already updated incrementally)
     Value eval = Value(networks.evaluate(*state.current, state.phase, pos.side_to_move() == WHITE));
 
+    // Guard: Don't modify mate or TB scores
+    if (is_win(eval) || is_loss(eval))
+        return eval;
+
     // Apply Patricia's aggressive modifiers
     Value bonus1 = Modifiers::better_than_material(eval, pos);
     Value bonus2 = Modifiers::sacrifice_bonus(pos, state, eval, search_ply);
     eval += bonus1 + bonus2;
 
+    // Material scaling (discourage trades when ahead)
     eval = Modifiers::material_scaling(eval, pos);
+
+    // Halfmove clock scaling (prevent 50-move draws)
+    // Patricia's implementation: eval * (200 - halfmoves) / 200
+    int halfmove_clock = pos.state()->rule50;
+    if (halfmove_clock > 0) {
+        eval = Value(eval * (200 - halfmove_clock) / 200);
+    }
+
+    // Draw contempt (±50cp based on material advantage)
+    eval = Modifiers::draw_contempt(pos, eval);
 
     return eval;
 }
@@ -222,11 +237,11 @@ Value sacrifice_bonus(const Position& pos,
         return VALUE_ZERO;
 
     // Detect sacrifices in search history
-    // (Simplified version - full implementation would track entire history)
+    // Compare current material advantage to starting material advantage
     int material_diff = get_material_diff(pos);
-    int starting_diff = state.starting_material;
+    int starting_diff = state.starting_material_diff;  // Fixed: now comparing like units
 
-    // If we sacrificed material (material diff got worse)
+    // If we sacrificed material (material advantage got worse by 100+ centipawns)
     if (material_diff < starting_diff - 100) {
         // Bonus based on eval
         if (eval > VALUE_DRAW + 300)
@@ -252,12 +267,12 @@ Value material_scaling(Value eval, const Position& pos) {
 
 Value better_than_material(Value eval, const Position& pos) {
     // Patricia's "better than material" bonus (search.h:126-133)
-    // Currently commented out in Patricia but we can enable it
+    // Increased threshold to reduce noise from frequent triggering
 
     int material_diff = get_material_diff(pos);
     int material_eval = material_diff;  // Rough material-only evaluation
 
-    constexpr int threshold = 50;
+    constexpr int threshold = 150;  // Increased from 50 to avoid excessive bonuses
 
     // Give bonus if position is much better than material suggests
     if (eval > 0 && eval > material_eval + threshold) {

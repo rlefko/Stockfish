@@ -42,7 +42,7 @@ struct PatriciaState {
     int last_phase_check_depth = 0;
 
     // Material tracking for sacrifice detection
-    int starting_material = 0;
+    int starting_material_diff = 0;  // Material advantage at search start
     int material_diff_history[256] = {0};
     int history_length = 0;
 };
