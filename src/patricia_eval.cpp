@@ -183,13 +183,15 @@ Value evaluate_patricia(const Position& pos,
     if (is_win(eval) || is_loss(eval))
         return eval;
 
-    // Apply Patricia's aggressive modifiers
+    // Calculate bonuses based on base eval (but don't add yet)
     Value bonus1 = Modifiers::better_than_material(eval, pos);
     Value bonus2 = Modifiers::sacrifice_bonus(pos, state, eval, search_ply);
-    eval += bonus1 + bonus2;
 
-    // Material scaling (discourage trades when ahead)
+    // Material scaling (discourage trades when ahead) - applied to BASE eval only
     eval = Modifiers::material_scaling(eval, pos);
+
+    // Add bonuses AFTER scaling (Patricia's order: search.h:172-174)
+    eval += bonus1 + bonus2;
 
     // Halfmove clock scaling (prevent 50-move draws)
     // Patricia's implementation: eval * (200 - halfmoves) / 200
@@ -197,9 +199,6 @@ Value evaluate_patricia(const Position& pos,
     if (halfmove_clock > 0) {
         eval = Value(eval * (200 - halfmove_clock) / 200);
     }
-
-    // Draw contempt (±50cp based on material advantage)
-    eval = Modifiers::draw_contempt(pos, eval);
 
     return eval;
 }
@@ -266,24 +265,8 @@ Value material_scaling(Value eval, const Position& pos) {
 }
 
 Value better_than_material(Value eval, const Position& pos) {
-    // Patricia's "better than material" bonus (search.h:126-133)
-    // Increased threshold to reduce noise from frequent triggering
-
-    int material_diff = get_material_diff(pos);
-    int material_eval = material_diff;  // Rough material-only evaluation
-
-    constexpr int threshold = 150;  // Increased from 50 to avoid excessive bonuses
-
-    // Give bonus if position is much better than material suggests
-    if (eval > 0 && eval > material_eval + threshold) {
-        int bonus = 25 + (eval - material_eval - threshold) / 10;
-        return Value(bonus);
-    }
-    else if (eval < 0 && eval < material_eval - threshold) {
-        int bonus = -(25 + (material_eval - eval - threshold) / 10);
-        return Value(bonus);
-    }
-
+    // Patricia's "better than material" bonus (search.h:117-126)
+    // NOTE: Patricia has this feature COMMENTED OUT - disabled to match
     return VALUE_ZERO;
 }
 
