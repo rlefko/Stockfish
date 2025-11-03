@@ -1629,9 +1629,29 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
                 }
             }
 
-            // Skip non-captures
+            // Skip non-captures (with endgame exception for critical pawn moves)
             if (!capture)
-                continue;
+            {
+                int piecesCount = pos.count<ALL_PIECES>();
+
+                if (piecesCount <= 8)  // Endgame detection
+                {
+                    // In endgames, allow quiet pawn moves (critical for promotion races)
+                    // but still prune other quiet moves based on history
+                    Piece movedPiece = pos.moved_piece(move);
+                    if (type_of(movedPiece) != PAWN)
+                    {
+                        // Non-pawn quiet moves: use pawnHistory check from original code
+                        if (pawnHistory[pawn_history_index(pos)][movedPiece][move.to_sq()] < 7300)
+                            continue;
+                    }
+                    // Pawn quiet moves: don't skip (allow exploration)
+                }
+                else  // Middlegame: keep simplified behavior from e7a4708a
+                {
+                    continue;  // Skip all non-captures
+                }
+            }
 
             // Do not search moves with bad enough SEE values
             if (!pos.see_ge(move, -78))
