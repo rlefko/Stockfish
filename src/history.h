@@ -84,7 +84,18 @@ class StatsEntry {
     void operator<<(int bonus) {
         // Make sure that bonus is in range [-D, D]
         int clampedBonus = std::clamp(bonus, -D, D);
-        entry += clampedBonus - entry * std::abs(clampedBonus) / D;
+
+        // Optimize for power-of-2 values (e.g., PawnHistory with D=8192)
+        // but keep exact same behavior for all values
+        if constexpr ((D & (D - 1)) == 0) {
+            // D is a power of 2, use bit-shift optimization
+            constexpr int shift = __builtin_ctz(D);  // Count trailing zeros
+            entry += clampedBonus - ((entry * std::abs(clampedBonus)) >> shift);
+        } else {
+            // Keep original division for non-power-of-2 values
+            // This preserves the carefully tuned behavior
+            entry += clampedBonus - entry * std::abs(clampedBonus) / D;
+        }
 
         assert(std::abs(entry) <= D);
     }
