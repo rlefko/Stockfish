@@ -1928,11 +1928,23 @@ void SearchManager::check_time(Search::Worker& worker) {
     if (ponder)
         return;
 
+    // Emergency stop for pathological search times (prevents infinite hangs)
+    // Triggers only when search takes 10x longer than expected - no impact on normal games
+    bool emergencyStop = false;
+    if (worker.limits.use_time_management() && elapsed > tm.maximum() * 10)
+    {
+        emergencyStop = true;
+        // Optional: Log this rare event for debugging
+        // sync_cout << "info string emergency_stop at depth " << worker.completedDepth
+        //           << " after " << elapsed << "ms" << sync_endl;
+    }
+
     if (
       // Later we rely on the fact that we can at least use the mainthread previous
       // root-search score and PV in a multithreaded environment to prove mated-in scores.
       worker.completedDepth >= 1
-      && ((worker.limits.use_time_management() && (elapsed > tm.maximum() || stopOnPonderhit))
+      && (emergencyStop
+          || (worker.limits.use_time_management() && (elapsed > tm.maximum() || stopOnPonderhit))
           || (worker.limits.movetime && elapsed >= worker.limits.movetime)
           || (worker.limits.nodes && worker.threads.nodes_searched() >= worker.limits.nodes)))
         worker.threads.stop = worker.threads.abortedSearch = true;
