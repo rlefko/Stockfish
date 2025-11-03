@@ -84,7 +84,23 @@ class StatsEntry {
     void operator<<(int bonus) {
         // Make sure that bonus is in range [-D, D]
         int clampedBonus = std::clamp(bonus, -D, D);
-        entry += clampedBonus - entry * std::abs(clampedBonus) / D;
+
+        // Check if D is a power of 2 for bit-shifting optimization
+        if constexpr ((D & (D - 1)) == 0) {
+            // Use bit-shifting for power-of-2 values
+            constexpr int shift = __builtin_ctz(D);  // Count trailing zeros at compile time
+
+            // Fast absolute value using bit manipulation
+            int absBonus = clampedBonus;
+            int mask = absBonus >> (sizeof(int) * 8 - 1);
+            absBonus = (absBonus + mask) ^ mask;
+
+            // Combine multiplication and shift in one expression
+            entry += clampedBonus - ((entry * absBonus) >> shift);
+        } else {
+            // Fallback to division for non-power-of-2 values
+            entry += clampedBonus - entry * std::abs(clampedBonus) / D;
+        }
 
         assert(std::abs(entry) <= D);
     }
@@ -102,18 +118,18 @@ using Stats = MultiArray<StatsEntry<T, D>, Sizes...>;
 // during the current search, and is used for reduction and move ordering decisions.
 // It uses 2 tables (one for each color) indexed by the move's from and to squares,
 // see https://www.chessprogramming.org/Butterfly_Boards
-using ButterflyHistory = Stats<std::int16_t, 7183, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
+using ButterflyHistory = Stats<std::int16_t, 8192, COLOR_NB, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // LowPlyHistory is adressed by play and move's from and to squares, used
 // to improve move ordering near the root
 using LowPlyHistory =
-  Stats<std::int16_t, 7183, LOW_PLY_HISTORY_SIZE, int(SQUARE_NB) * int(SQUARE_NB)>;
+  Stats<std::int16_t, 8192, LOW_PLY_HISTORY_SIZE, int(SQUARE_NB) * int(SQUARE_NB)>;
 
 // CapturePieceToHistory is addressed by a move's [piece][to][captured piece type]
-using CapturePieceToHistory = Stats<std::int16_t, 10692, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
+using CapturePieceToHistory = Stats<std::int16_t, 16384, PIECE_NB, SQUARE_NB, PIECE_TYPE_NB>;
 
 // PieceToHistory is like ButterflyHistory but is addressed by a move's [piece][to]
-using PieceToHistory = Stats<std::int16_t, 30000, PIECE_NB, SQUARE_NB>;
+using PieceToHistory = Stats<std::int16_t, 16384, PIECE_NB, SQUARE_NB>;
 
 // ContinuationHistory is the combined history of a given pair of moves, usually
 // the current one given a previous one. The nested history table is based on
