@@ -118,6 +118,34 @@ void update_correction_history(const Position& pos,
         const Piece  pc = pos.piece_on(m.to_sq());
         (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus * 137 / 128;
         (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 64 / 128;
+
+        // Goldilocks asymmetric continuation correction
+        // Optimal balance: not too aggressive, not too conservative
+        if (ss->ply >= 6)
+        {
+            if (bonus > 0)
+            {
+                // Positive reinforcement: moderate weights with progressive decay
+                (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 40 / 128;
+                if (ss->ply >= 8)
+                    (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 24 / 128;
+            }
+            else  // bonus < 0
+            {
+                // Negative correction: exactly half of positive weights (2:1 ratio)
+                // Enhanced quiet detection: check both previous moves
+                bool isQuiet = !ss->inCheck
+                            && !pos.capture((ss - 1)->currentMove)
+                            && (ss->ply < 2 || !pos.capture((ss - 2)->currentMove));
+
+                if (isQuiet)
+                {
+                    (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 20 / 128;
+                    if (ss->ply >= 8)
+                        (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 12 / 128;
+                }
+            }
+        }
     }
 }
 
