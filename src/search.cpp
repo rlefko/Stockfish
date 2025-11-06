@@ -118,6 +118,20 @@ void update_correction_history(const Position& pos,
         const Piece  pc = pos.piece_on(m.to_sq());
         (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus * 137 / 128;
         (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 64 / 128;
+
+        // Apply deep history asymmetrically based on bonus sign (when deep enough)
+        if (ss->ply >= 6 && bonus > 0)
+        {
+            // Liberal application for positive reinforcement
+            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 32 / 128;
+            if (ss->ply >= 8)
+                (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 16 / 128;
+        }
+        else if (ss->ply >= 6 && !ss->inCheck && !pos.capture((ss - 1)->currentMove))
+        {
+            // Conservative application for negative penalties in quiet positions
+            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 16 / 128;
+        }
     }
 }
 
