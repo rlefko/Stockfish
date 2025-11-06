@@ -117,20 +117,26 @@ void update_correction_history(const Position& pos,
         const Square to = m.to_sq();
         const Piece  pc = pos.piece_on(m.to_sq());
         (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus * 137 / 128;
-        (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 64 / 128;
+        (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 80 / 128;  // Stronger 4-ply weight
 
-        // Apply deep history asymmetrically based on bonus sign (when deep enough)
+        // Aggressive asymmetric: stronger weights for deeper plies
         if (ss->ply >= 6 && bonus > 0)
         {
-            // Liberal application for positive reinforcement
-            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 32 / 128;
+            // Very liberal for positive reinforcement with stronger weights
+            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 56 / 128;
             if (ss->ply >= 8)
-                (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 16 / 128;
+                (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 40 / 128;
         }
-        else if (ss->ply >= 6 && !ss->inCheck && !pos.capture((ss - 1)->currentMove))
+        else if (ss->ply >= 6 && bonus < 0)
         {
-            // Conservative application for negative penalties in quiet positions
-            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 16 / 128;
+            // Still conservative for negative but less restrictive
+            bool isQuiet = !ss->inCheck && !pos.capture((ss - 1)->currentMove);
+            if (isQuiet)
+            {
+                (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 32 / 128;
+                if (ss->ply >= 8)
+                    (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 24 / 128;
+            }
         }
     }
 }
