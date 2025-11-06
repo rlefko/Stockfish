@@ -118,6 +118,14 @@ void update_correction_history(const Position& pos,
         const Piece  pc = pos.piece_on(m.to_sq());
         (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus * 137 / 128;
         (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 64 / 128;
+
+        // Apply deep history with relaxed conditions and stronger weights
+        if (ss->ply >= 4)  // Lowered threshold for earlier application
+        {
+            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 48 / 128;  // 37.5% weight
+            if (ss->ply >= 6)  // Lowered from 8
+                (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 24 / 128;  // 18.75% weight
+        }
     }
 }
 
