@@ -118,6 +118,13 @@ void update_correction_history(const Position& pos,
         const Piece  pc = pos.piece_on(m.to_sq());
         (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus * 137 / 128;
         (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 64 / 128;
+
+        // Only update deep history in quiet positions (not tactical) and when deep enough
+        bool isTactical = ss->inCheck || pos.capture((ss - 1)->currentMove);
+        if (!isTactical && ss->ply >= 6)
+        {
+            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 32 / 128;
+        }
     }
 }
 
