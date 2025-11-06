@@ -119,18 +119,36 @@ void update_correction_history(const Position& pos,
         (*(ss - 2)->continuationCorrectionHistory)[pc][to] << bonus * 137 / 128;
         (*(ss - 4)->continuationCorrectionHistory)[pc][to] << bonus * 64 / 128;
 
-        // Apply deep history asymmetrically based on bonus sign (when deep enough)
-        if (ss->ply >= 6 && bonus > 0)
+        // Enhanced asymmetric with adaptive confidence-based weighting
+        if (ss->ply >= 4)  // Lower threshold for more updates
         {
-            // Liberal application for positive reinforcement
-            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 32 / 128;
-            if (ss->ply >= 8)
-                (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 16 / 128;
-        }
-        else if (ss->ply >= 6 && !ss->inCheck && !pos.capture((ss - 1)->currentMove))
-        {
-            // Conservative application for negative penalties in quiet positions
-            (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 16 / 128;
+            // Confidence factor: stronger updates for larger bonuses (more decisive positions)
+            int bonusMagnitude = std::abs(bonus);
+            bool highConfidence = bonusMagnitude > CORRECTION_HISTORY_LIMIT / 8;
+
+            if (bonus > 0)
+            {
+                // Aggressive positive reinforcement, scaled by confidence
+                int weight6 = highConfidence ? 72 : 48;  // Up to 56% for high confidence
+                int weight8 = highConfidence ? 40 : 24;  // Up to 31% for high confidence
+
+                (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * weight6 / 128;
+                if (ss->ply >= 6)  // Relaxed from 8
+                    (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * weight8 / 128;
+            }
+            else if (!ss->inCheck)  // Negative updates only in non-check positions
+            {
+                // Graduated penalty based on position quietness
+                bool veryQuiet = !pos.capture((ss - 1)->currentMove) &&
+                                (ss->ply < 2 || !pos.capture((ss - 2)->currentMove));
+
+                if (veryQuiet || highConfidence)  // Apply penalties when confident or very quiet
+                {
+                    (*(ss - 6)->continuationCorrectionHistory)[pc][to] << bonus * 20 / 128;
+                    if (ss->ply >= 6 && veryQuiet)
+                        (*(ss - 8)->continuationCorrectionHistory)[pc][to] << bonus * 10 / 128;
+                }
+            }
         }
     }
 }
