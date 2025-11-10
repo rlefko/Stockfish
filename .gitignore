@@ -15,3 +15,16 @@ tsan.supp
 __pycache__/
 tests/syzygy
 tests/bench_tmp.epd
+
+# Local testing infrastructure
+CLAUDE.md
+*.epd
+run_adaptive_tests.sh
+run_comprehensive_tests.sh
+analyze_pgn.py
+test_results/
+.claude/
+config.json
+.DS_Store
+stockfish-*
+fastchess/
