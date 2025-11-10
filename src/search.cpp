@@ -267,6 +267,7 @@ void Search::Worker::iterative_deepening() {
         (ss - i)->continuationHistory =
           &continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
         (ss - i)->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
+        (ss - i)->captureContinuation           = &captureContinuationHistory[NO_PIECE_TYPE];
         (ss - i)->staticEval                    = VALUE_NONE;
     }
 
@@ -536,6 +537,9 @@ void Search::Worker::do_move(
         ss->currentMove         = move;
         ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[dp.pc][move.to_sq()];
+        ss->captureContinuation =
+          capture ? &captureContinuationHistory[type_of(st.capturedPiece)]
+                  : &captureContinuationHistory[NO_PIECE_TYPE];
     }
 }
 
@@ -965,7 +969,7 @@ moves_loop:  // When in check, search starts here
 
 
     MovePicker mp(pos, ttData.move, depth, &mainHistory, &lowPlyHistory, &captureHistory, contHist,
-                  &pawnHistory, ss->ply);
+                  &pawnHistory, ss->captureContinuation, ss->ply);
 
     value = bestValue;
 
@@ -1584,7 +1588,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     // the moves. We presently use two stages of move generator in quiescence search:
     // captures, or evasions only when in check.
     MovePicker mp(pos, ttData.move, DEPTH_QS, &mainHistory, &lowPlyHistory, &captureHistory,
-                  contHist, &pawnHistory, ss->ply);
+                  contHist, &pawnHistory, ss->captureContinuation, ss->ply);
 
     // Step 5. Loop through all pseudo-legal moves until no moves remain or a beta
     // cutoff occurs.
@@ -1819,6 +1823,8 @@ void update_all_stats(const Position& pos,
         // Increase stats for the best move in case it was a capture move
         capturedPiece = type_of(pos.piece_on(bestMove.to_sq()));
         captureHistory[movedPiece][bestMove.to_sq()][capturedPiece] << bonus * 1482 / 1024;
+        // V1: Update capture continuation history
+        (*ss->captureContinuation)[movedPiece][bestMove.to_sq()] << bonus * 1482 / 1024;
     }
 
     // Extra penalty for a quiet early move that was not a TT move in
@@ -1832,6 +1838,8 @@ void update_all_stats(const Position& pos,
         movedPiece    = pos.moved_piece(move);
         capturedPiece = type_of(pos.piece_on(move.to_sq()));
         captureHistory[movedPiece][move.to_sq()][capturedPiece] << -malus * 1397 / 1024;
+        // V1: Update capture continuation history
+        (*ss->captureContinuation)[movedPiece][move.to_sq()] << -malus * 1397 / 1024;
     }
 }
 

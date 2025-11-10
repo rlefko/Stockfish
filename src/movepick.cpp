@@ -88,6 +88,7 @@ MovePicker::MovePicker(const Position&              p,
                        const CapturePieceToHistory* cph,
                        const PieceToHistory**       ch,
                        const PawnHistory*           ph,
+                       const PieceToHistory*        cc,
                        int                          pl) :
     pos(p),
     mainHistory(mh),
@@ -95,6 +96,7 @@ MovePicker::MovePicker(const Position&              p,
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
+    captureContinuation(cc),
     ttMove(ttm),
     depth(d),
     ply(pl) {
@@ -111,6 +113,7 @@ MovePicker::MovePicker(const Position&              p,
 MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceToHistory* cph) :
     pos(p),
     captureHistory(cph),
+    captureContinuation(nullptr),
     ttMove(ttm),
     threshold(th) {
     assert(!pos.checkers());
@@ -153,6 +156,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
         if constexpr (Type == CAPTURES)
             m.value = (*captureHistory)[pc][to][type_of(capturedPiece)]
+                    + (captureContinuation ? (*captureContinuation)[pc][to] : 0)
                     + 7 * int(PieceValue[capturedPiece]) + 1024 * bool(pos.check_squares(pt) & to);
 
         else if constexpr (Type == QUIETS)
