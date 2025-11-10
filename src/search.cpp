@@ -529,7 +529,8 @@ void Search::Worker::do_move(Position& pos, const Move move, StateInfo& st, Stac
 void Search::Worker::do_move(
   Position& pos, const Move move, StateInfo& st, const bool givesCheck, Stack* const ss) {
     bool capture = pos.capture_stage(move);
-    nodes.fetch_add(1, std::memory_order_relaxed);
+    // Preferable over fetch_add to avoid locking instructions
+    nodes.store(nodes.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
     DirtyBoardData dirtyBoardData = pos.do_move(move, st, givesCheck, &tt);
     accumulatorStack.push(dirtyBoardData);
@@ -744,7 +745,8 @@ Value Search::Worker::search(
 
             if (err != TB::ProbeState::FAIL)
             {
-                tbHits.fetch_add(1, std::memory_order_relaxed);
+                // Preferable over fetch_add to avoid locking instructions
+                tbHits.store(tbHits.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
 
                 int drawScore = tbConfig.useRule50 ? 1 : 0;
 
