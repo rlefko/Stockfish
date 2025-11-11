@@ -64,6 +64,8 @@ struct Stack {
     Move*                       pv;
     PieceToHistory*             continuationHistory;
     CorrectionHistory<PieceTo>* continuationCorrectionHistory;
+    PieceType                   capturedPiece1Ply;  // What was captured 1 ply ago
+    PieceType                   capturedPiece2Ply;  // What was captured 2 plies ago
     int                         ply;
     Move                        currentMove;
     Move                        excludedMove;
@@ -285,6 +287,7 @@ class Worker {
     CapturePieceToHistory captureHistory;
     ContinuationHistory   continuationHistory[2][2];
     PawnHistory           pawnHistory;
+    CaptureContinuation2History captureContinuation2History;
 
     CorrectionHistory<Pawn>         pawnCorrectionHistory;
     CorrectionHistory<Minor>        minorPieceCorrectionHistory;

@@ -46,6 +46,9 @@ class MovePicker {
                const CapturePieceToHistory*,
                const PieceToHistory**,
                const PawnHistory*,
+               const CaptureContinuation2History*,
+               PieceType,
+               PieceType,
                int);
     MovePicker(const Position&, Move, int, const CapturePieceToHistory*);
     Move next_move();
@@ -59,13 +62,16 @@ class MovePicker {
     ExtMove* begin() { return cur; }
     ExtMove* end() { return endCur; }
 
-    const Position&              pos;
-    const ButterflyHistory*      mainHistory;
-    const LowPlyHistory*         lowPlyHistory;
-    const CapturePieceToHistory* captureHistory;
-    const PieceToHistory**       continuationHistory;
-    const PawnHistory*           pawnHistory;
-    Move                         ttMove;
+    const Position&                      pos;
+    const ButterflyHistory*              mainHistory;
+    const LowPlyHistory*                 lowPlyHistory;
+    const CapturePieceToHistory*         captureHistory;
+    const PieceToHistory**               continuationHistory;
+    const PawnHistory*                   pawnHistory;
+    const CaptureContinuation2History*   captureContinuation2History;
+    PieceType                            capturedPiece1Ply;
+    PieceType                            capturedPiece2Ply;
+    Move                                 ttMove;
     ExtMove *                    cur, *endCur, *endBadCaptures, *endCaptures, *endGenerated;
     int                          stage;
     int                          threshold;

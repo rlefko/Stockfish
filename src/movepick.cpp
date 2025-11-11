@@ -80,21 +80,27 @@ void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 // good moves first, and how important move ordering is at the current node.
 
 // MovePicker constructor for the main search and for the quiescence search
-MovePicker::MovePicker(const Position&              p,
-                       Move                         ttm,
-                       Depth                        d,
-                       const ButterflyHistory*      mh,
-                       const LowPlyHistory*         lph,
-                       const CapturePieceToHistory* cph,
-                       const PieceToHistory**       ch,
-                       const PawnHistory*           ph,
-                       int                          pl) :
+MovePicker::MovePicker(const Position&                    p,
+                       Move                               ttm,
+                       Depth                              d,
+                       const ButterflyHistory*            mh,
+                       const LowPlyHistory*               lph,
+                       const CapturePieceToHistory*       cph,
+                       const PieceToHistory**             ch,
+                       const PawnHistory*                 ph,
+                       const CaptureContinuation2History* cc2h,
+                       PieceType                          cp1,
+                       PieceType                          cp2,
+                       int                                pl) :
     pos(p),
     mainHistory(mh),
     lowPlyHistory(lph),
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
+    captureContinuation2History(cc2h),
+    capturedPiece1Ply(cp1),
+    capturedPiece2Ply(cp2),
     ttMove(ttm),
     depth(d),
     ply(pl) {
@@ -111,6 +117,9 @@ MovePicker::MovePicker(const Position&              p,
 MovePicker::MovePicker(const Position& p, Move ttm, int th, const CapturePieceToHistory* cph) :
     pos(p),
     captureHistory(cph),
+    captureContinuation2History(nullptr),
+    capturedPiece1Ply(NO_PIECE_TYPE),
+    capturedPiece2Ply(NO_PIECE_TYPE),
     ttMove(ttm),
     threshold(th) {
     assert(!pos.checkers());
@@ -153,6 +162,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
         if constexpr (Type == CAPTURES)
             m.value = (*captureHistory)[pc][to][type_of(capturedPiece)]
+                    + (captureContinuation2History ? (*captureContinuation2History)[capturedPiece1Ply][capturedPiece2Ply][pc][to] : 0)
                     + 7 * int(PieceValue[capturedPiece]) + 1024 * bool(pos.check_squares(pt) & to);
 
         else if constexpr (Type == QUIETS)

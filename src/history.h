@@ -123,6 +123,10 @@ using ContinuationHistory = MultiArray<PieceToHistory, PIECE_NB, SQUARE_NB>;
 // PawnHistory is addressed by the pawn structure and a move's [piece][to]
 using PawnHistory = Stats<std::int16_t, 8192, PAWN_HISTORY_SIZE, PIECE_NB, SQUARE_NB>;
 
+// CaptureContinuation2History tracks capture sequences with 2-ply context
+// Indexed by [captured 1-ply ago][captured 2-ply ago][piece][to]
+using CaptureContinuation2History = Stats<std::int16_t, 30000, PIECE_TYPE_NB, PIECE_TYPE_NB, PIECE_NB, SQUARE_NB>;
+
 // Correction histories record differences between the static evaluation of
 // positions and their search score. It is used to improve the static evaluation
 // used by some search heuristics.
